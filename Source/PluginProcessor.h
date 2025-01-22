@@ -10,9 +10,16 @@
 
 #include <JuceHeader.h>
 
-//==============================================================================
-/**
-*/
+namespace ParamIDs
+{
+
+    inline constexpr auto size{ "size" };
+    inline constexpr auto damp{ "damp" };
+    inline constexpr auto width{ "width" };
+    inline constexpr auto mix{ "mix" };
+
+}
+
 class WEAVERBAudioProcessor  : public juce::AudioProcessor
 {
 public:
@@ -53,7 +60,20 @@ public:
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
 
+    juce::AudioProcessorValueTreeState apvts;
+
 private:
+
+    juce::AudioParameterFloat* size{ nullptr };
+    juce::AudioParameterFloat* damp{ nullptr };
+    juce::AudioParameterFloat* width{ nullptr };
+    juce::AudioParameterFloat* mix{ nullptr };
+
+    juce::dsp::Reverb::Parameters params;
+    juce::dsp::Reverb reverb;
+
+    void updateReverbParams();
+
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (WEAVERBAudioProcessor)
 };

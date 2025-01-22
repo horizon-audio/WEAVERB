@@ -23,7 +23,6 @@ public:
         juce::Slider& slider);
 };
 
-
 class WEAVERBAudioProcessorEditor  : public juce::AudioProcessorEditor
 {
 public:
@@ -41,6 +40,11 @@ private:
     juce::Slider fadeKnob;
     juce::Slider spreadKnob;
     juce::Slider mixKnob;
+
+    std::unique_ptr<juce::SliderParameterAttachment> voidAttachment;
+    std::unique_ptr<juce::SliderParameterAttachment> fadeAttachment;
+    std::unique_ptr<juce::SliderParameterAttachment> spreadAttachment;
+    std::unique_ptr<juce::SliderParameterAttachment> mixAttachment;
 
     KnobLookAndFeel knobLNF;
    

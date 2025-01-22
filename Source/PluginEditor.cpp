@@ -61,6 +61,11 @@ WEAVERBAudioProcessorEditor::WEAVERBAudioProcessorEditor (WEAVERBAudioProcessor&
     addAndMakeVisible(fadeKnob);
     addAndMakeVisible(spreadKnob);
     addAndMakeVisible(mixKnob);
+
+    voidAttachment = std::make_unique<juce::SliderParameterAttachment>(*audioProcessor.apvts.getParameter(ParamIDs::size), voidKnob);
+    fadeAttachment = std::make_unique<juce::SliderParameterAttachment>(*audioProcessor.apvts.getParameter(ParamIDs::damp), fadeKnob);
+    spreadAttachment = std::make_unique<juce::SliderParameterAttachment>(*audioProcessor.apvts.getParameter(ParamIDs::width), spreadKnob);
+    mixAttachment = std::make_unique<juce::SliderParameterAttachment>(*audioProcessor.apvts.getParameter(ParamIDs::mix), mixKnob);
 }
 
 WEAVERBAudioProcessorEditor::~WEAVERBAudioProcessorEditor()

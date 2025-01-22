@@ -9,6 +9,34 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 
+static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
+{
+    juce::AudioProcessorValueTreeState::ParameterLayout layout;
+
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{ ParamIDs::size, 1 },
+        ParamIDs::size,
+        juce::NormalisableRange{ 0.0f, 100.0f, 0.01f, 1.0f },
+        50.0f));
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{ ParamIDs::damp, 1 },
+        ParamIDs::damp,
+        juce::NormalisableRange{ 0.0f, 100.0f, 0.01f, 1.0f },
+        50.0f));
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{ ParamIDs::width, 1 },
+        ParamIDs::width,
+        juce::NormalisableRange{ 0.0f, 100.0f, 0.01f, 1.0f },
+        50.0f));
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{ ParamIDs::mix, 1 },
+        ParamIDs::mix,
+        juce::NormalisableRange{ 0.0f, 100.0f, 0.01f, 1.0f },
+        50.0f));
+
+    return layout;
+}
+
 //==============================================================================
 WEAVERBAudioProcessor::WEAVERBAudioProcessor()
 #ifndef JucePlugin_PreferredChannelConfigurations
@@ -19,13 +47,19 @@ WEAVERBAudioProcessor::WEAVERBAudioProcessor()
                       #endif
                        .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
                      #endif
-                       )
+                       ),
+    apvts(*this, nullptr, "Parameters", createParameterLayout())
 #endif
 {
+    size = dynamic_cast<juce::AudioParameterFloat*>(apvts.getParameter(ParamIDs::size));
+    damp = dynamic_cast<juce::AudioParameterFloat*>(apvts.getParameter(ParamIDs::damp));
+    width = dynamic_cast<juce::AudioParameterFloat*>(apvts.getParameter(ParamIDs::width));
+    mix = dynamic_cast<juce::AudioParameterFloat*>(apvts.getParameter(ParamIDs::mix));
 }
 
 WEAVERBAudioProcessor::~WEAVERBAudioProcessor()
 {
+
 }
 
 //==============================================================================
@@ -93,8 +127,13 @@ void WEAVERBAudioProcessor::changeProgramName (int index, const juce::String& ne
 //==============================================================================
 void WEAVERBAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
-    // Use this method as the place to do any pre-playback
-    // initialisation that you need..
+    juce::dsp::ProcessSpec spec{};
+
+    spec.sampleRate = sampleRate;
+    spec.maximumBlockSize = static_cast<juce::uint32> (samplesPerBlock);
+    spec.numChannels = static_cast<juce::uint32> (getTotalNumOutputChannels());
+
+    reverb.prepare(spec);
 }
 
 void WEAVERBAudioProcessor::releaseResources()
@@ -131,31 +170,14 @@ bool WEAVERBAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) 
 
 void WEAVERBAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
 {
+    juce::ignoreUnused(midiMessages);
     juce::ScopedNoDenormals noDenormals;
-    auto totalNumInputChannels  = getTotalNumInputChannels();
-    auto totalNumOutputChannels = getTotalNumOutputChannels();
 
-    // In case we have more outputs than inputs, this code clears any output
-    // channels that didn't contain input data, (because these aren't
-    // guaranteed to be empty - they may contain garbage).
-    // This is here to avoid people getting screaming feedback
-    // when they first compile a plugin, but obviously you don't need to keep
-    // this code if your algorithm always overwrites all the output channels.
-    for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
-        buffer.clear (i, 0, buffer.getNumSamples());
+    updateReverbParams();
 
-    // This is the place where you'd normally do the guts of your plugin's
-    // audio processing...
-    // Make sure to reset the state if your inner loop is processing
-    // the samples and the outer loop is handling the channels.
-    // Alternatively, you can process the samples with the channels
-    // interleaved by keeping the same state.
-    for (int channel = 0; channel < totalNumInputChannels; ++channel)
-    {
-        auto* channelData = buffer.getWritePointer (channel);
-
-        // ..do something to the data...
-    }
+    juce::dsp::AudioBlock<float> block(buffer);
+    juce::dsp::ProcessContextReplacing ctx(block);
+    reverb.process(ctx);
 }
 
 //==============================================================================
@@ -181,6 +203,17 @@ void WEAVERBAudioProcessor::setStateInformation (const void* data, int sizeInByt
 {
     // You should use this method to restore your parameters from this memory block,
     // whose contents will have been created by the getStateInformation() call.
+}
+
+void WEAVERBAudioProcessor::updateReverbParams()
+{
+    params.roomSize = size->get() * 0.01f;
+    params.damping = damp->get() * 0.01f;
+    params.width = width->get() * 0.01f;
+    params.wetLevel = mix->get() * 0.01f;
+    params.dryLevel = 1.0f - mix->get() * 0.01f;
+
+    reverb.setParameters(params);
 }
 
 //==============================================================================
